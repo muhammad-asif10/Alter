@@ -1,0 +1,9 @@
+# Supported platforms: https://docs.github.com/github/administering-a-repository/displaying-a-sponsor-button-in-your-repository
+
+# Replace placeholders with your real accounts/URLs.
+# Example:
+# github: [muhammad-asif10]
+# custom: ["https://buymeacoffee.com/muhammad.asif10"]
+
+github: [muhammadasifkha01@gmail.com]
+custom: ["https://github.com/sponsors/muhammad-asif10"]

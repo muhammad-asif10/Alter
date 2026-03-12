@@ -1,0 +1,13 @@
+# Global default owner(s)
+* @muhammad-asif10
+
+# Desktop app source
+/desktop/ @muhammad-asif10
+
+# Build/release and project policy files
+/Alter.spec @muhammad-asif10
+/requirements.txt @muhammad-asif10
+/README.md @muhammad-asif10
+/SECURITY.md @muhammad-asif10
+/CONTRIBUTING.md @muhammad-asif10
+/CODE_OF_CONDUCT.md @muhammad-asif10
