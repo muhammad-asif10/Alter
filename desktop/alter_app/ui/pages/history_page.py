@@ -164,7 +164,12 @@ class HistoryPage(QWidget):
             height = entry.get("format", "720p").replace("mp4-", "").replace("p", "")
             if not height.isdigit(): height = "720"
             opts = {
-                "format": f"bestvideo[height<={height}]+bestaudio/best[height<={height}]",
+                "format": (
+                    f"bestvideo[ext=mp4][height<={height}]+bestaudio[ext=m4a]"
+                    f"/best[ext=mp4][height<={height}]"
+                    f"/bestvideo[height<={height}]+bestaudio[acodec!=opus]"
+                    f"/best[height<={height}]"
+                ),
                 "outtmpl": os.path.join(save, tpl),
                 "merge_output_format": "mp4",
                 "_title": title, "_fmt": "mp4", "_path": save,

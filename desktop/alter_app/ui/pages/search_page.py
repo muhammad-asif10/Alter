@@ -231,7 +231,7 @@ class SearchPage(QWidget):
                 tpl  = self._s.get("filename_tpl") or "%(title)s.%(ext)s"
                 title = e.get("title", "Unknown")
                 opts = {
-                    "format": "bestvideo+bestaudio/best",
+                    "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/bestvideo+bestaudio/best",
                     "outtmpl": os.path.join(save, tpl),
                     "merge_output_format": "mp4",
                     "_title": title, "_fmt": "mp4", "_path": save,
@@ -412,7 +412,12 @@ class SearchPage(QWidget):
                 if chk_meta.isChecked():  pp.append({"key": "FFmpegMetadata", "add_metadata": True})
                 if chk_thumb.isChecked(): pp.append({"key": "EmbedThumbnail"})
                 opts = {
-                    "format":  f"bestvideo[height<={height}]+bestaudio/best[height<={height}]",
+                    "format": (
+                        f"bestvideo[ext=mp4][height<={height}]+bestaudio[ext=m4a]"
+                        f"/best[ext=mp4][height<={height}]"
+                        f"/bestvideo[height<={height}]+bestaudio[acodec!=opus]"
+                        f"/best[height<={height}]"
+                    ),
                     "outtmpl": os.path.join(save, tpl),
                     "merge_output_format": "mp4",
                     "_title": title, "_fmt": "mp4", "_path": save,
