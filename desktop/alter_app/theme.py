@@ -22,7 +22,7 @@ P_LIGHT = {
     "accent":       "#2383E2",
     "accent_h":     "#1C6EC7",
     "text":         "#111111",
-    "muted":        "#666666",
+    "muted":        "#4B5563",
     "success":      "#16A34A",
     "error":        "#DC2626",
     "warning":      "#D97706",

@@ -19,6 +19,13 @@ class DownloadCard(QFrame):
         "error": P["error"],
     }
 
+    @staticmethod
+    def _control_btn_style() -> str:
+        return (
+            f"background:{P['card_hover']};color:{P['muted']};"
+            f"border-radius:8px;border:none;font-size:8px;font-weight:700;"
+        )
+
     def __init__(self, dl_id, title, fmt, thumb_url="", url="", opts=None):
         super().__init__()
         self.setObjectName("card")
@@ -54,18 +61,12 @@ class DownloadCard(QFrame):
 
         self._btn_x = QPushButton("X")
         self._btn_x.setFixedSize(28, 28)
-        self._btn_x.setStyleSheet(
-            f"background:{P['card_hover']};color:{P['muted']};"
-            f"border-radius:8px;border:none;font-size:8px;font-weight:700;"
-        )
+        self._btn_x.setStyleSheet(self._control_btn_style())
         self._btn_x.clicked.connect(lambda: self.sig_cancel.emit(self.id))
 
         self._btn_open = QPushButton("Open")
         self._btn_open.setFixedSize(44, 28)
-        self._btn_open.setStyleSheet(
-            f"background:{P['card_hover']};color:{P['muted']};"
-            f"border-radius:8px;border:none;font-size:8px;font-weight:700;"
-        )
+        self._btn_open.setStyleSheet(self._control_btn_style())
         self._btn_open.setVisible(False)
         self._btn_open.clicked.connect(lambda: self.sig_open.emit(self._save_path))
 
@@ -178,3 +179,37 @@ class DownloadCard(QFrame):
         self._lbl_status.setStyleSheet(f"color:{P['error']};")
         self._btn_x.setVisible(False)
         self._btn_retry.setVisible(True)  # show retry on failure (#1)
+
+    def refresh_styles(self):
+        self.FMT_COLOR = {"mp4": P["accent"], "mp3": P["purple"], "srt": P["cyan"]}
+        self.STATE_COLOR = {
+            "queued": P["muted"],
+            "downloading": P["accent"],
+            "processing": P["warning"],
+            "done": P["success"],
+            "error": P["error"],
+        }
+
+        badge_bg = self.FMT_COLOR.get(self._fmt, P["border"])
+        self._badge.setStyleSheet(
+            f"background:{badge_bg};color:white;"
+            f"border-radius:4px;padding:2px 5px;font-size:7pt;font-weight:700;"
+        )
+        self._btn_x.setStyleSheet(self._control_btn_style())
+        self._btn_open.setStyleSheet(self._control_btn_style())
+
+        if self.status == "queued":
+            self._lbl_status.setStyleSheet(f"color:{P['muted']};")
+        elif self.status == "downloading":
+            self._lbl_status.setStyleSheet(f"color:{P['accent']};")
+        elif self.status == "processing":
+            self._lbl_status.setStyleSheet(f"color:{P['warning']};")
+        elif self.status == "done":
+            self._lbl_status.setStyleSheet(f"color:{P['success']};")
+            self._bar.setStyleSheet(f"QProgressBar::chunk{{background:{P['success']};border-radius:3px;}}")
+        elif self.status == "error":
+            self._lbl_status.setStyleSheet(f"color:{P['error']};")
+            self._bar.setStyleSheet(f"QProgressBar::chunk{{background:{P['error']};border-radius:3px;}}")
+
+        self._lbl_speed.setStyleSheet(f"color:{P['muted']};")
+        self._apply_state_pill(self.status)

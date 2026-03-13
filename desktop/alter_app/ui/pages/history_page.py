@@ -54,6 +54,10 @@ class HistoryPage(QWidget):
         self._stats_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         root.addWidget(self._stats_lbl)
 
+    def refresh_styles(self):
+        self._stats_lbl.setStyleSheet(f"color: {P['muted']};")
+        self.refresh()
+
     def refresh(self):
         while self._vbox.count():
             item = self._vbox.takeAt(0)

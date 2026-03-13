@@ -22,7 +22,11 @@ def btn(text, bg, fg="#fff", hover=None) -> QPushButton:
             font-weight: 600; border: none;
         }}
         QPushButton:hover {{ background: {h}; }}
-        QPushButton:disabled {{ background: #2A2A2A; color: #555; }}
+        QPushButton:disabled {{
+            background: {P['surface']};
+            color: {P['muted']};
+            border: 1px solid {P['border']};
+        }}
     """)
     return b
 

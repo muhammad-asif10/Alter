@@ -34,22 +34,18 @@ class DownloadsPage(QWidget):
 
         ctl = QHBoxLayout()
         ctl.setSpacing(6)
-        b_pause = QPushButton("Pause Queue")
-        b_resume = QPushButton("Resume Queue")
-        b_clearq = QPushButton("Clear Queued")
-        for b in (b_pause, b_resume, b_clearq):
+        self._b_pause = QPushButton("Pause Queue")
+        self._b_resume = QPushButton("Resume Queue")
+        self._b_clearq = QPushButton("Clear Queued")
+        for b in (self._b_pause, self._b_resume, self._b_clearq):
             b.setFixedHeight(32)
-            b.setStyleSheet(
-                f"QPushButton{{background:{P['card_hover']};color:{P['text']};"
-                f"border-radius:8px;border:none;padding:5px 10px;font-size:8pt;font-weight:600;}}"
-                f"QPushButton:hover{{background:{P['border']};}}"
-            )
-        b_pause.clicked.connect(self.sig_pause_queue.emit)
-        b_resume.clicked.connect(self.sig_resume_queue.emit)
-        b_clearq.clicked.connect(self.sig_clear_queued.emit)
-        ctl.addWidget(b_pause)
-        ctl.addWidget(b_resume)
-        ctl.addWidget(b_clearq)
+            b.setStyleSheet(self._queue_btn_style())
+        self._b_pause.clicked.connect(self.sig_pause_queue.emit)
+        self._b_resume.clicked.connect(self.sig_resume_queue.emit)
+        self._b_clearq.clicked.connect(self.sig_clear_queued.emit)
+        ctl.addWidget(self._b_pause)
+        ctl.addWidget(self._b_resume)
+        ctl.addWidget(self._b_clearq)
         root.addLayout(ctl)
 
         # ── Filter pills ──
@@ -87,6 +83,14 @@ class DownloadsPage(QWidget):
 
         scroll.setWidget(self._container)
         root.addWidget(scroll, 1)
+
+    @staticmethod
+    def _queue_btn_style() -> str:
+        return (
+            f"QPushButton{{background:{P['card_hover']};color:{P['text']};"
+            f"border-radius:8px;border:none;padding:5px 10px;font-size:8pt;font-weight:600;}}"
+            f"QPushButton:hover{{background:{P['border']};}}"
+        )
 
     @staticmethod
     def _pill_style(active: bool) -> str:
@@ -133,6 +137,16 @@ class DownloadsPage(QWidget):
         """Re-apply filter pill styles after a theme change (#4)."""
         for tag, b in self._filter_btns.items():
             b.setStyleSheet(self._pill_style(self._active_filter == tag))
+
+    def refresh_styles(self):
+        self._lbl_count.setStyleSheet(f"color: {P['muted']};")
+        self._summary.setStyleSheet(f"color: {P['muted']};")
+        self._empty_lbl.setStyleSheet(f"color: {P['muted']};")
+        for b in (self._b_pause, self._b_resume, self._b_clearq):
+            b.setStyleSheet(self._queue_btn_style())
+        self.refresh_pill_styles()
+        for c in self._cards.values():
+            c.refresh_styles()
 
     def set_summary(self, active: int, queued: int, failed: int, eta_text: str = "-"):
         self._summary.setText(

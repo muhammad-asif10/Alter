@@ -12,7 +12,6 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor, QFont, QPalette, QShortcut, QKeySequence
 
 from .constants import MOBILE_W, MOBILE_H, resolve_app_icon_path
-from . import theme as _theme_mod
 from .theme import QSS, P, P_DARK, P_LIGHT, build_qss
 from .utils.icons import SVG_SEARCH, SVG_DOWNLOAD, SVG_HISTORY, SVG_SETTINGS
 from .data.history import HistoryManager
@@ -235,9 +234,39 @@ class MainWindow(QMainWindow):
         return QIcon(pix)
 
     # ── Theme ──
+    @staticmethod
+    def _system_is_light_now() -> bool:
+        app = QApplication.instance()
+        if app is None:
+            return False
+        try:
+            scheme = app.styleHints().colorScheme()
+            if scheme == Qt.ColorScheme.Light:
+                return True
+            if scheme == Qt.ColorScheme.Dark:
+                return False
+        except Exception:
+            pass
+
+        # Windows fallback: read OS app theme preference directly.
+        if sys.platform == "win32":
+            try:
+                import winreg
+                key = winreg.OpenKey(
+                    winreg.HKEY_CURRENT_USER,
+                    r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+                )
+                value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+                winreg.CloseKey(key)
+                return bool(value)
+            except Exception:
+                pass
+
+        return app.palette().color(QPalette.ColorRole.Window).lightness() > 128
+
     def _apply_theme(self, name: str):
         if name == "system":
-            palette = P_LIGHT if _theme_mod._system_is_light else P_DARK
+            palette = P_LIGHT if self._system_is_light_now() else P_DARK
         elif name == "light":
             palette = P_LIGHT
         else:
@@ -270,17 +299,17 @@ class MainWindow(QMainWindow):
         if hasattr(self, "_page_settings"):
             self._page_settings.refresh_styles()
 
-        if hasattr(self, "_page_downloads"):
-            self._page_downloads.refresh_pill_styles()
+        if hasattr(self, "_page_search"):
+            self._page_search.refresh_styles()
 
-    def _on_system_color_scheme_changed(self):
+        if hasattr(self, "_page_history"):
+            self._page_history.refresh_styles()
+
+        if hasattr(self, "_page_downloads"):
+            self._page_downloads.refresh_styles()
+
+    def _on_system_color_scheme_changed(self, *_):
         """Called when the OS switches between light and dark mode (Qt 6.5+)."""
-        try:
-            from PyQt6.QtCore import Qt
-            scheme = QApplication.instance().styleHints().colorScheme()
-            _theme_mod._system_is_light = (scheme == Qt.ColorScheme.Light)
-        except Exception:
-            pass
         if self._settings.get("theme") == "system":
             self._apply_theme("system")
 

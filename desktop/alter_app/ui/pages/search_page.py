@@ -34,10 +34,10 @@ class SearchPage(QWidget):
         # Header
         hdr = QVBoxLayout()
         hdr.setSpacing(2)
-        title_lbl = lbl("Alter", 17, bold=True, color=P["accent"])
-        sub_lbl   = lbl("Download any video with one click", 8, color=P["muted"])
-        hdr.addWidget(title_lbl)
-        hdr.addWidget(sub_lbl)
+        self._title_lbl = lbl("Alter", 17, bold=True, color=P["accent"])
+        self._sub_lbl   = lbl("Download any video with one click", 8, color=P["muted"])
+        hdr.addWidget(self._title_lbl)
+        hdr.addWidget(self._sub_lbl)
         root.addLayout(hdr)
 
         root.addSpacing(8)
@@ -51,11 +51,10 @@ class SearchPage(QWidget):
         self._update_lbl = lbl("", 8, color=P["warning"])
         bn_lay.addWidget(self._update_lbl)
         bn_lay.addStretch()
-        bn_close = QPushButton("X")
-        bn_close.setFixedSize(30, 30)
-        bn_close.setStyleSheet(f"background:transparent;color:{P['muted']};border:none;")
-        bn_close.clicked.connect(lambda: self._update_banner.setVisible(False))
-        bn_lay.addWidget(bn_close)
+        self._bn_close = QPushButton("X")
+        self._bn_close.setFixedSize(30, 30)
+        self._bn_close.clicked.connect(lambda: self._update_banner.setVisible(False))
+        bn_lay.addWidget(self._bn_close)
         root.addWidget(self._update_banner)
 
         # Clipboard prompt banner (hidden by default) (#6)
@@ -66,18 +65,15 @@ class SearchPage(QWidget):
         cb_lay.setContentsMargins(12, 8, 12, 8)
         self._clip_lbl = lbl("", 8, color=P["muted"])
         self._clip_lbl.setWordWrap(True)
-        cb_use = QPushButton("Use")
-        cb_use.setFixedHeight(32)
-        cb_use.setStyleSheet(f"QPushButton{{background:{P['accent']};color:#fff;"
-                             f"border-radius:6px;border:none;padding:2px 10px;font-size:8pt;}}")
-        cb_use.clicked.connect(self._use_clipboard)
-        cb_dismiss = QPushButton("X")
-        cb_dismiss.setFixedSize(30, 30)
-        cb_dismiss.setStyleSheet(f"background:transparent;color:{P['muted']};border:none;")
-        cb_dismiss.clicked.connect(lambda: self._clip_banner.setVisible(False))
+        self._cb_use = QPushButton("Use")
+        self._cb_use.setFixedHeight(32)
+        self._cb_use.clicked.connect(self._use_clipboard)
+        self._cb_dismiss = QPushButton("X")
+        self._cb_dismiss.setFixedSize(30, 30)
+        self._cb_dismiss.clicked.connect(lambda: self._clip_banner.setVisible(False))
         cb_lay.addWidget(self._clip_lbl, 1)
-        cb_lay.addWidget(cb_use)
-        cb_lay.addWidget(cb_dismiss)
+        cb_lay.addWidget(self._cb_use)
+        cb_lay.addWidget(self._cb_dismiss)
         root.addWidget(self._clip_banner)
         self._last_clip = ""  # track to avoid re-prompting same URL
 
@@ -91,15 +87,7 @@ class SearchPage(QWidget):
 
         self._btn_fetch = QPushButton("→")
         self._btn_fetch.setFixedSize(46, 46)
-        self._btn_fetch.setStyleSheet(f"""
-            QPushButton {{
-                background: {P['accent']}; color: white;
-                border-radius: 23px; border: none;
-                font-size: 16pt; font-weight: 700;
-            }}
-            QPushButton:hover {{ background: {P['accent_h']}; }}
-            QPushButton:disabled {{ background: #2A2A2A; color: #555; }}
-        """)
+        self._apply_fetch_btn_style()
         self._btn_fetch.clicked.connect(self._fetch)
 
         url_row.addWidget(self._url, 1)
@@ -119,6 +107,35 @@ class SearchPage(QWidget):
         self._preview_vbox.setContentsMargins(0, 0, 4, 0)
         self._preview_scroll.setWidget(self._preview_inner)
         root.addWidget(self._preview_scroll, 1)
+
+        self.refresh_styles()
+
+    def _apply_fetch_btn_style(self):
+        self._btn_fetch.setStyleSheet(f"""
+            QPushButton {{
+                background: {P['accent']}; color: white;
+                border-radius: 23px; border: none;
+                font-size: 16pt; font-weight: 700;
+            }}
+            QPushButton:hover {{ background: {P['accent_h']}; }}
+            QPushButton:disabled {{
+                background: {P['surface']};
+                color: {P['muted']};
+                border: 1px solid {P['border']};
+            }}
+        """)
+
+    def refresh_styles(self):
+        self._title_lbl.setStyleSheet(f"color: {P['accent']};")
+        self._sub_lbl.setStyleSheet(f"color: {P['muted']};")
+        self._update_lbl.setStyleSheet(f"color: {P['warning']};")
+        self._clip_lbl.setStyleSheet(f"color: {P['muted']};")
+        self._bn_close.setStyleSheet(f"background:transparent;color:{P['muted']};border:none;")
+        self._cb_use.setStyleSheet(f"QPushButton{{background:{P['accent']};color:#fff;"
+                                    f"border-radius:6px;border:none;padding:2px 10px;font-size:8pt;}}")
+        self._cb_dismiss.setStyleSheet(f"background:transparent;color:{P['muted']};border:none;")
+        self._lbl_st.setStyleSheet(f"color:{P['muted']};")
+        self._apply_fetch_btn_style()
 
     def show_update_banner(self, version: str):
         self._update_lbl.setText(f"Update available: Alter v{version}. Visit GitHub to update.")
