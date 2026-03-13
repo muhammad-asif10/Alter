@@ -12,6 +12,7 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor, QFont, QPalette, QShortcut, QKeySequence
 
 from .constants import MOBILE_W, MOBILE_H, resolve_app_icon_path
+from . import theme as _theme_mod
 from .theme import QSS, P, P_DARK, P_LIGHT, build_qss
 from .utils.icons import SVG_SEARCH, SVG_DOWNLOAD, SVG_HISTORY, SVG_SETTINGS
 from .data.history import HistoryManager
@@ -80,10 +81,17 @@ class MainWindow(QMainWindow):
                   self._page_history, self._page_settings):
             self._stack.addWidget(p)
 
-        # Apply saved theme on startup
+        # Apply saved theme on startup (always, so QPalette is set correctly)
         saved_theme = self._settings.get("theme")
-        if saved_theme != "dark":
-            self._apply_theme(saved_theme)
+        self._apply_theme(saved_theme)
+
+        # React to OS-level theme changes while the app is running (Qt 6.5+)
+        try:
+            QApplication.instance().styleHints().colorSchemeChanged.connect(
+                self._on_system_color_scheme_changed
+            )
+        except AttributeError:
+            pass
 
         root_v.addWidget(self._stack, 1)
 
@@ -229,16 +237,30 @@ class MainWindow(QMainWindow):
     # ── Theme ──
     def _apply_theme(self, name: str):
         if name == "system":
-            sys_light = QApplication.palette().color(
-                QPalette.ColorRole.Window).lightness() > 128
-            palette = P_LIGHT if sys_light else P_DARK
+            palette = P_LIGHT if _theme_mod._system_is_light else P_DARK
         elif name == "light":
             palette = P_LIGHT
         else:
             palette = P_DARK
         P.update(palette)
         new_qss = build_qss(P)
-        QApplication.instance().setStyleSheet(new_qss)
+
+        app = QApplication.instance()
+        app.setStyleSheet(new_qss)
+
+        # Keep QPalette in sync so Qt-native rendering uses the correct colours
+        qpal = QPalette()
+        qpal.setColor(QPalette.ColorRole.Window,          QColor(P["bg"]))
+        qpal.setColor(QPalette.ColorRole.WindowText,      QColor(P["text"]))
+        qpal.setColor(QPalette.ColorRole.Base,            QColor(P["card"]))
+        qpal.setColor(QPalette.ColorRole.AlternateBase,   QColor(P["surface"]))
+        qpal.setColor(QPalette.ColorRole.Text,            QColor(P["text"]))
+        qpal.setColor(QPalette.ColorRole.Button,          QColor(P["card"]))
+        qpal.setColor(QPalette.ColorRole.ButtonText,      QColor(P["text"]))
+        qpal.setColor(QPalette.ColorRole.Highlight,       QColor(P["accent"]))
+        qpal.setColor(QPalette.ColorRole.HighlightedText, QColor("#fff"))
+        app.setPalette(qpal)
+
         self.setStyleSheet(new_qss)
 
         for k, b in getattr(self, "_nav_btns", {}).items():
@@ -250,6 +272,17 @@ class MainWindow(QMainWindow):
 
         if hasattr(self, "_page_downloads"):
             self._page_downloads.refresh_pill_styles()
+
+    def _on_system_color_scheme_changed(self):
+        """Called when the OS switches between light and dark mode (Qt 6.5+)."""
+        try:
+            from PyQt6.QtCore import Qt
+            scheme = QApplication.instance().styleHints().colorScheme()
+            _theme_mod._system_is_light = (scheme == Qt.ColorScheme.Light)
+        except Exception:
+            pass
+        if self._settings.get("theme") == "system":
+            self._apply_theme("system")
 
     # ── Navigation ──
     def _nav(self, key):

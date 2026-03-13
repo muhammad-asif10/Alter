@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QPalette, QColor, QIcon
 
 from .main_window import MainWindow
-from .theme import P
+from .theme import P, set_system_is_light
 from .constants import resolve_app_icon_path
 
 def main():
@@ -23,6 +23,11 @@ def main():
     icon_path = resolve_app_icon_path()
     if icon_path.exists():
         app.setWindowIcon(QIcon(str(icon_path)))
+
+    # Detect the OS light/dark preference from the default system palette
+    # BEFORE we override it with our own custom palette.
+    _sys_is_light = app.palette().color(QPalette.ColorRole.Window).lightness() > 128
+    set_system_is_light(_sys_is_light)
 
     pal = QPalette()
     pal.setColor(QPalette.ColorRole.Window,          QColor(P["bg"]))

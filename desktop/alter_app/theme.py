@@ -126,4 +126,12 @@ QPushButton {{ border: none; border-radius: 8px; padding: 7px 14px; }}
 
 QSS = build_qss(P)
 
-__all__ = ["P_DARK", "P_LIGHT", "P", "build_qss", "QSS"]
+# Stores whether the OS theme was light at startup detection time.
+# Must be set in app.py BEFORE any custom QPalette is applied to QApplication.
+_system_is_light: bool = False
+
+def set_system_is_light(v: bool) -> None:
+    global _system_is_light
+    _system_is_light = v
+
+__all__ = ["P_DARK", "P_LIGHT", "P", "build_qss", "QSS", "set_system_is_light"]
