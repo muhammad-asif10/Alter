@@ -23,6 +23,13 @@ class Settings:
 
     def get(self, k): return self._d.get(k, self._def.get(k))
 
+    def get_defaults(self) -> dict:
+        return dict(self._def)
+
     def set(self, k, v):
         self._d[k] = v
+        SETTINGS_FILE.write_text(json.dumps(self._d, indent=2))
+
+    def reset(self):
+        self._d = dict(self._def)
         SETTINGS_FILE.write_text(json.dumps(self._d, indent=2))
