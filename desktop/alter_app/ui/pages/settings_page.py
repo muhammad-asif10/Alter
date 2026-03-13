@@ -1,7 +1,7 @@
 import shutil
 from typing import Dict
 
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QScrollArea, QFrame, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QScrollArea, QFrame, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, QMessageBox
 from PyQt6.QtCore import Qt, pyqtSignal
 
 from ...theme import P
@@ -70,12 +70,12 @@ class SettingsPage(QWidget):
 
         # ── Max concurrent ──
         sl.addWidget(lbl("MAX CONCURRENT DOWNLOADS", 9, bold=True, color=P["muted"]))
-        cc = QComboBox()
-        cc.addItems(["1", "2", "3", "4", "5"])
-        cc.setCurrentText(str(settings.get("max_dl")))
-        cc.setFixedWidth(80)
-        cc.currentTextChanged.connect(lambda v: settings.set("max_dl", int(v)))
-        sl.addWidget(cc)
+        self._cc_box = QComboBox()
+        self._cc_box.addItems(["1", "2", "3", "4", "5"])
+        self._cc_box.setCurrentText(str(settings.get("max_dl")))
+        self._cc_box.setFixedWidth(80)
+        self._cc_box.currentTextChanged.connect(lambda v: settings.set("max_dl", int(v)))
+        sl.addWidget(self._cc_box)
         sl.addWidget(hsep())
 
         # ── Filename Template (#9) ──
@@ -186,6 +186,16 @@ class SettingsPage(QWidget):
 
         sl.addStretch()
 
+        # ── Reset to Defaults ──
+        reset_row = QHBoxLayout()
+        reset_row.setContentsMargins(0, 4, 0, 0)
+        self._reset_btn = btn("Reset to Defaults", P["error"], "#fff")
+        self._reset_btn.setFixedHeight(36)
+        self._reset_btn.clicked.connect(self._reset_settings)
+        reset_row.addStretch()
+        reset_row.addWidget(self._reset_btn)
+        sl.addLayout(reset_row)
+
         # ── Version label ──
         ver = lbl(f"Alter v{APP_VERSION}", 8, color=P["muted"])
         ver.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -241,3 +251,47 @@ class SettingsPage(QWidget):
         if d:
             self._s.set("save_path", d)
             self._path_lbl.setText(d)
+
+    def _reset_settings(self):
+        reply = QMessageBox.question(
+            self,
+            "Reset to Defaults",
+            "Are you sure you want to reset all settings to their default values?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        self._s.reset()
+
+        # Update all widgets to reflect the new defaults.
+        defaults = self._s.get_defaults()
+
+        self._path_lbl.setText(defaults["save_path"])
+        self._cc_box.setCurrentText(str(defaults["max_dl"]))
+        self._tpl_edit.setText(defaults["filename_tpl"])
+        self._proxy_edit.setText(defaults["proxy"])
+
+        default_speed = int(defaults["speed_limit"])
+        for i in range(self._speed_box.count()):
+            if self._speed_box.itemData(i) == default_speed:
+                self._speed_box.setCurrentIndex(i)
+                break
+
+        default_browser = defaults["cookies_browser"]
+        for i in range(self._cookies_box.count()):
+            if self._cookies_box.itemData(i) == default_browser:
+                self._cookies_box.setCurrentIndex(i)
+                break
+
+        default_theme = defaults["theme"]
+        for k, b in self._theme_btns.items():
+            b.setChecked(k == default_theme)
+            b.setStyleSheet(self._theme_pill(k == default_theme))
+        self.sig_theme.emit(default_theme)
+
+        default_notify = defaults["notify"]
+        for k, b in self._notify_btns.items():
+            b.setChecked(k == default_notify)
+            b.setStyleSheet(self._theme_pill(k == default_notify))
