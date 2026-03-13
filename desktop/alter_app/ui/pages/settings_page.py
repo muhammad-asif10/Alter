@@ -87,6 +87,7 @@ class SettingsPage(QWidget):
         # Preset buttons
         preset_row = QHBoxLayout()
         preset_row.setSpacing(6)
+        self._preset_btns: list[QPushButton] = []
         for label, tpl in [
             ("Title", "%(title)s.%(ext)s"),
             ("Artist – Title", "%(uploader)s - %(title)s.%(ext)s"),
@@ -94,15 +95,11 @@ class SettingsPage(QWidget):
         ]:
             pb = QPushButton(label)
             pb.setFixedHeight(28)
-            pb.setStyleSheet(
-                f"QPushButton{{background:{P['card_hover']};color:{P['muted']};"
-                f"border-radius:6px;border:none;font-size:8pt;padding:2px 8px;}}"
-                f"QPushButton:hover{{color:{P['text']};}}"
-            )
             pb.clicked.connect(lambda _, t=tpl: (
                 self._tpl_edit.setText(t),
                 settings.set("filename_tpl", t),
             ))
+            self._preset_btns.append(pb)
             preset_row.addWidget(pb)
         preset_row.addStretch()
         sl.addLayout(preset_row)
@@ -201,6 +198,8 @@ class SettingsPage(QWidget):
         ver.setAlignment(Qt.AlignmentFlag.AlignCenter)
         root.addWidget(ver)
 
+        self.refresh_styles()
+
     @staticmethod
     def _theme_pill(active: bool) -> str:
         if active:
@@ -215,8 +214,8 @@ class SettingsPage(QWidget):
     def refresh_styles(self):
         """Re-apply inline styles after a theme change."""
         self._path_lbl.setStyleSheet(
-            f"background:{P['card']};border:1px solid {P['border']};"
-            f"border-radius:8px;padding:9px 14px;"
+            f"background-color:{P['card']};color:{P['text']};"
+            f"border:1px solid {P['border']};border-radius:8px;padding:9px 14px;"
         )
         self._br_btn.setStyleSheet(f"""
             QPushButton {{
@@ -226,6 +225,28 @@ class SettingsPage(QWidget):
             }}
             QPushButton:hover {{ background: {P['card_hover']}; }}
         """)
+        combo_style = (
+            f"QComboBox{{background:{P['card']};color:{P['text']};"
+            f"border:1px solid {P['border']};border-radius:8px;padding:5px 10px;min-height:30px;}}"
+            f"QComboBox::drop-down{{border:none;width:20px;}}"
+        )
+        self._cc_box.setStyleSheet(combo_style)
+        self._speed_box.setStyleSheet(combo_style)
+        self._cookies_box.setStyleSheet(combo_style)
+        self._tpl_edit.setStyleSheet(
+            f"background:{P['card']};color:{P['text']};border:1px solid {P['border']};"
+            f"border-radius:18px;padding:9px 14px;"
+        )
+        self._proxy_edit.setStyleSheet(
+            f"background:{P['card']};color:{P['text']};border:1px solid {P['border']};"
+            f"border-radius:18px;padding:9px 14px;"
+        )
+        for pb in self._preset_btns:
+            pb.setStyleSheet(
+                f"QPushButton{{background:{P['card_hover']};color:{P['muted']};"
+                f"border-radius:6px;border:none;font-size:8pt;padding:2px 8px;}}"
+                f"QPushButton:hover{{color:{P['text']};}}"
+            )
         current_theme = self._s.get("theme")
         for k, b in self._theme_btns.items():
             b.setStyleSheet(self._theme_pill(k == current_theme))
@@ -273,24 +294,28 @@ class SettingsPage(QWidget):
         self._tpl_edit.setText(defaults["filename_tpl"])
         self._proxy_edit.setText(defaults["proxy"])
 
+        # Speed limit
         default_speed = int(defaults["speed_limit"])
         for i in range(self._speed_box.count()):
             if self._speed_box.itemData(i) == default_speed:
                 self._speed_box.setCurrentIndex(i)
                 break
 
+        # Cookies browser
         default_browser = defaults["cookies_browser"]
         for i in range(self._cookies_box.count()):
             if self._cookies_box.itemData(i) == default_browser:
                 self._cookies_box.setCurrentIndex(i)
                 break
 
+        # Theme buttons
         default_theme = defaults["theme"]
         for k, b in self._theme_btns.items():
             b.setChecked(k == default_theme)
             b.setStyleSheet(self._theme_pill(k == default_theme))
         self.sig_theme.emit(default_theme)
 
+        # Notification buttons
         default_notify = defaults["notify"]
         for k, b in self._notify_btns.items():
             b.setChecked(k == default_notify)
