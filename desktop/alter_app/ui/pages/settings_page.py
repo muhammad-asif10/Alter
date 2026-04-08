@@ -24,181 +24,247 @@ class SettingsPage(QWidget):
         root.addWidget(hsep())
 
         # Scroll everything so all settings fit on the small window
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-        inner = QWidget()
-        sl = QVBoxLayout(inner)
-        sl.setSpacing(10)
-        sl.setContentsMargins(0, 0, 4, 0)
-        scroll.setWidget(inner)
-        root.addWidget(scroll, 1)
+        from PyQt6.QtWidgets import QTabWidget
 
-        # ── Theme ──
-        sl.addWidget(lbl("THEME", 9, bold=True, color=P["muted"]))
-        theme_row = QHBoxLayout()
-        theme_row.setSpacing(8)
-        self._theme_btns: Dict[str, QPushButton] = {}
-        current_theme = settings.get("theme")
-        for key, label in [("dark", "Dark"), ("light", "Light"), ("system", "System")]:
-            b = QPushButton(label)
-            b.setCheckable(True)
-            b.setChecked(key == current_theme)
-            b.setFixedHeight(32)
-            b.setStyleSheet(self._theme_pill(key == current_theme))
-            b.clicked.connect(lambda _, k=key: self._set_theme(k))
-            self._theme_btns[key] = b
-            theme_row.addWidget(b)
-        theme_row.addStretch()
-        sl.addLayout(theme_row)
-        sl.addWidget(hsep())
+        self.tabs = QTabWidget()
+        self.tabs.setStyleSheet(f"QTabWidget::pane {{ border: 0; }} QTabBar::tab {{ background: {P['card']}; padding: 8px 12px; margin: 2px; border-radius: 4px; }} QTabBar::tab:selected {{ background: {P['accent']}; color: white; }}")
+        root.addWidget(self.tabs, 1)
 
-        # ── Save location ──
-        sl.addWidget(lbl("SAVE LOCATION", 9, bold=True, color=P["muted"]))
-        pr = QHBoxLayout()
-        self._path_lbl = QLabel(settings.get("save_path"))
-        self._path_lbl.setStyleSheet(
-            f"background:{P['card']};border:1px solid {P['border']};"
-            f"border-radius:8px;padding:9px 14px;"
-        )
-        self._br_btn = btn("Browse", P["card_hover"], P["text"])
-        self._br_btn.setFixedWidth(88)
-        self._br_btn.clicked.connect(self._browse)
-        pr.addWidget(self._path_lbl, 1)
-        pr.addWidget(self._br_btn)
-        sl.addLayout(pr)
+        def create_scrollable_tab(layout_callback):
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setFrameShape(QFrame.Shape.NoFrame)
+            inner = QWidget()
+            layout = QVBoxLayout(inner)
+            layout.setSpacing(10)
+            layout.setContentsMargins(0, 0, 4, 0)
+            layout_callback(layout)
+            layout.addStretch()
+            scroll.setWidget(inner)
+            return scroll
 
-        # ── Max concurrent ──
-        sl.addWidget(lbl("MAX CONCURRENT DOWNLOADS", 9, bold=True, color=P["muted"]))
-        self._cc_box = QComboBox()
-        self._cc_box.addItems(["1", "2", "3", "4", "5"])
-        self._cc_box.setCurrentText(str(settings.get("max_dl")))
-        self._cc_box.setFixedWidth(80)
-        self._cc_box.currentTextChanged.connect(lambda v: settings.set("max_dl", int(v)))
-        sl.addWidget(self._cc_box)
-        sl.addWidget(hsep())
+        def build_general(sl):
+            # ── Theme ──
+            sl.addWidget(lbl("THEME", 9, bold=True, color=P["muted"]))
+            theme_row = QHBoxLayout()
+            theme_row.setSpacing(8)
+            self._theme_btns: Dict[str, QPushButton] = {}
+            current_theme = settings.get("theme")
+            for key, label in [("dark", "Dark"), ("light", "Light"), ("system", "System")]:
+                b = QPushButton(label)
+                b.setCheckable(True)
+                b.setChecked(key == current_theme)
+                b.setFixedHeight(32)
+                b.setStyleSheet(self._theme_pill(key == current_theme))
+                b.clicked.connect(lambda _, k=key: self._set_theme(k))
+                self._theme_btns[key] = b
+                theme_row.addWidget(b)
+            theme_row.addStretch()
+            sl.addLayout(theme_row)
+            sl.addWidget(hsep())
 
-        # ── Filename Template (#9) ──
-        sl.addWidget(lbl("FILENAME TEMPLATE", 9, bold=True, color=P["muted"]))
-        self._tpl_edit = QLineEdit(settings.get("filename_tpl") or "%(title)s.%(ext)s")
-        self._tpl_edit.setMinimumHeight(36)
-        self._tpl_edit.textChanged.connect(lambda v: settings.set("filename_tpl", v))
-        sl.addWidget(self._tpl_edit)
-        # Preset buttons
-        preset_row = QHBoxLayout()
-        preset_row.setSpacing(6)
-        self._preset_btns: list[QPushButton] = []
-        for label, tpl in [
-            ("Title", "%(title)s.%(ext)s"),
-            ("Artist – Title", "%(uploader)s - %(title)s.%(ext)s"),
-            ("Date – Title", "%(upload_date)s %(title)s.%(ext)s"),
-        ]:
-            pb = QPushButton(label)
-            pb.setFixedHeight(28)
-            pb.clicked.connect(lambda _, t=tpl: (
-                self._tpl_edit.setText(t),
-                settings.set("filename_tpl", t),
-            ))
-            self._preset_btns.append(pb)
-            preset_row.addWidget(pb)
-        preset_row.addStretch()
-        sl.addLayout(preset_row)
-        sl.addWidget(hsep())
+            # ── Speed Throttle (#11) ──
+            sl.addWidget(lbl("SPEED LIMIT", 9, bold=True, color=P["muted"]))
+            self._speed_box = QComboBox()
+            _speed_opts = [
+                ("Unlimited", 0),
+                ("5 MB/s",   5120),
+                ("2 MB/s",   2048),
+                ("1 MB/s",   1024),
+                ("500 KB/s",  500),
+            ]
+            for label, val in _speed_opts:
+                self._speed_box.addItem(label, val)
+            cur_speed = int(settings.get("speed_limit") or 0)
+            for i in range(self._speed_box.count()):
+                if self._speed_box.itemData(i) == cur_speed:
+                    self._speed_box.setCurrentIndex(i)
+                    break
+            self._speed_box.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            self._speed_box.currentIndexChanged.connect(
+                lambda _: settings.set("speed_limit", self._speed_box.currentData())
+            )
+            sl.addWidget(self._speed_box)
+            sl.addWidget(hsep())
 
-        # ── Notification Preferences (#17) ──
-        sl.addWidget(lbl("NOTIFICATIONS", 9, bold=True, color=P["muted"]))
-        notify_row = QHBoxLayout()
-        notify_row.setSpacing(8)
-        self._notify_btns: Dict[str, QPushButton] = {}
-        current_notify = settings.get("notify") or "each"
-        for key, label in [("each", "Each"), ("batch", "Batch"), ("never", "Never")]:
-            b = QPushButton(label)
-            b.setCheckable(True)
-            b.setChecked(key == current_notify)
-            b.setFixedHeight(32)
-            b.setStyleSheet(self._theme_pill(key == current_notify))
-            b.clicked.connect(lambda _, k=key: self._set_notify(k))
-            self._notify_btns[key] = b
-            notify_row.addWidget(b)
-        notify_row.addStretch()
-        sl.addLayout(notify_row)
-        sl.addWidget(hsep())
+            # ── Proxy (#16) ──
+            sl.addWidget(lbl("PROXY URL", 9, bold=True, color=P["muted"]))
+            self._proxy_edit = QLineEdit(settings.get("proxy") or "")
+            self._proxy_edit.setPlaceholderText("http://user:pass@host:port  (leave blank to disable)")
+            self._proxy_edit.setMinimumHeight(36)
+            self._proxy_edit.textChanged.connect(lambda v: settings.set("proxy", v.strip()))
+            sl.addWidget(self._proxy_edit)
+            sl.addWidget(hsep())
 
-        # ── Speed Throttle (#11) ──
-        sl.addWidget(lbl("SPEED LIMIT", 9, bold=True, color=P["muted"]))
-        self._speed_box = QComboBox()
-        _speed_opts = [
-            ("Unlimited", 0),
-            ("5 MB/s",   5120),
-            ("2 MB/s",   2048),
-            ("1 MB/s",   1024),
-            ("500 KB/s",  500),
-        ]
-        for label, val in _speed_opts:
-            self._speed_box.addItem(label, val)
-        cur_speed = int(settings.get("speed_limit") or 0)
-        for i in range(self._speed_box.count()):
-            if self._speed_box.itemData(i) == cur_speed:
-                self._speed_box.setCurrentIndex(i)
-                break
-        self._speed_box.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self._speed_box.currentIndexChanged.connect(
-            lambda _: settings.set("speed_limit", self._speed_box.currentData())
-        )
-        sl.addWidget(self._speed_box)
-        sl.addWidget(hsep())
+            # ── Cookies Browser (#15) ──
+            sl.addWidget(lbl("COOKIES FROM BROWSER", 9, bold=True, color=P["muted"]))
+            self._cookies_box = QComboBox()
+            for label, val in [("None", ""), ("Chrome", "chrome"), ("Firefox", "firefox"), ("Edge", "edge")]:
+                self._cookies_box.addItem(label, val)
+            cur_browser = settings.get("cookies_browser") or ""
+            for i in range(self._cookies_box.count()):
+                if self._cookies_box.itemData(i) == cur_browser:
+                    self._cookies_box.setCurrentIndex(i)
+                    break
+            self._cookies_box.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            self._cookies_box.currentIndexChanged.connect(
+                lambda _: settings.set("cookies_browser", self._cookies_box.currentData())
+            )
+            sl.addWidget(self._cookies_box)
+            sl.addWidget(hsep())
 
-        # ── Proxy (#16) ──
-        sl.addWidget(lbl("PROXY URL", 9, bold=True, color=P["muted"]))
-        self._proxy_edit = QLineEdit(settings.get("proxy") or "")
-        self._proxy_edit.setPlaceholderText("http://user:pass@host:port  (leave blank to disable)")
-        self._proxy_edit.setMinimumHeight(36)
-        self._proxy_edit.textChanged.connect(lambda v: settings.set("proxy", v.strip()))
-        sl.addWidget(self._proxy_edit)
-        sl.addWidget(hsep())
+        def build_downloads(sl):
+            # ── Save location ──
+            sl.addWidget(lbl("SAVE LOCATION", 9, bold=True, color=P["muted"]))
+            pr = QHBoxLayout()
+            self._path_lbl = QLabel(settings.get("save_path"))
+            self._path_lbl.setStyleSheet(
+                f"background:{P['card']};border:1px solid {P['border']};"
+                f"border-radius:8px;padding:9px 14px;"
+            )
+            self._br_btn = btn("Browse", P["card_hover"], P["text"])
+            self._br_btn.setFixedWidth(88)
+            self._br_btn.clicked.connect(self._browse)
+            pr.addWidget(self._path_lbl, 1)
+            pr.addWidget(self._br_btn)
+            sl.addLayout(pr)
 
-        # ── Cookies Browser (#15) ──
-        sl.addWidget(lbl("COOKIES FROM BROWSER", 9, bold=True, color=P["muted"]))
-        self._cookies_box = QComboBox()
-        for label, val in [("None", ""), ("Chrome", "chrome"), ("Firefox", "firefox"), ("Edge", "edge")]:
-            self._cookies_box.addItem(label, val)
-        cur_browser = settings.get("cookies_browser") or ""
-        for i in range(self._cookies_box.count()):
-            if self._cookies_box.itemData(i) == cur_browser:
-                self._cookies_box.setCurrentIndex(i)
-                break
-        self._cookies_box.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self._cookies_box.currentIndexChanged.connect(
-            lambda _: settings.set("cookies_browser", self._cookies_box.currentData())
-        )
-        sl.addWidget(self._cookies_box)
-        sl.addWidget(hsep())
+            # ── Max concurrent ──
+            sl.addWidget(lbl("MAX CONCURRENT DOWNLOADS", 9, bold=True, color=P["muted"]))
+            self._cc_box = QComboBox()
+            self._cc_box.addItems(["1", "2", "3", "4", "5"])
+            self._cc_box.setCurrentText(str(settings.get("max_dl")))
+            self._cc_box.setFixedWidth(80)
+            self._cc_box.currentTextChanged.connect(lambda v: settings.set("max_dl", int(v)))
+            sl.addWidget(self._cc_box)
+            sl.addWidget(hsep())
 
-        # ── FFmpeg status ──
-        ffmpeg_ok = shutil.which("ffmpeg") is not None
-        status_msg = "FFmpeg ready. Merging and conversion are enabled." if ffmpeg_ok \
-                 else "FFmpeg missing. MP3/merge may not work. Install from ffmpeg.org"
-        sl.addWidget(lbl(status_msg, 9,
-                         color=P["success"] if ffmpeg_ok else P["error"]))
+            # ── Filename Template (#9) ──
+            sl.addWidget(lbl("FILENAME TEMPLATE", 9, bold=True, color=P["muted"]))
+            self._tpl_edit = QLineEdit(settings.get("filename_tpl") or "%(title)s.%(ext)s")
+            self._tpl_edit.setMinimumHeight(36)
+            self._tpl_edit.textChanged.connect(lambda v: settings.set("filename_tpl", v))
+            sl.addWidget(self._tpl_edit)
+            # Preset buttons
+            preset_row = QHBoxLayout()
+            preset_row.setSpacing(6)
+            self._preset_btns: list[QPushButton] = []
+            for label, tpl in [
+                ("Title", "%(title)s.%(ext)s"),
+                ("Artist – Title", "%(uploader)s - %(title)s.%(ext)s"),
+                ("Date – Title", "%(upload_date)s %(title)s.%(ext)s"),
+            ]:
+                pb = QPushButton(label)
+                pb.setFixedHeight(28)
+                pb.clicked.connect(lambda _, t=tpl: (
+                    self._tpl_edit.setText(t),
+                    settings.set("filename_tpl", t),
+                ))
+                self._preset_btns.append(pb)
+                preset_row.addWidget(pb)
+            preset_row.addStretch()
+            sl.addLayout(preset_row)
+            sl.addWidget(hsep())
 
-        sl.addStretch()
+        def build_notifications(sl):
+            # ── Notification Preferences (#17) ──
+            sl.addWidget(lbl("NOTIFICATIONS", 9, bold=True, color=P["muted"]))
+            notify_row = QHBoxLayout()
+            notify_row.setSpacing(8)
+            self._notify_btns: Dict[str, QPushButton] = {}
+            current_notify = settings.get("notify") or "each"
+            for key, label in [("each", "Each"), ("batch", "Batch"), ("never", "Never")]:
+                b = QPushButton(label)
+                b.setCheckable(True)
+                b.setChecked(key == current_notify)
+                b.setFixedHeight(32)
+                b.setStyleSheet(self._theme_pill(key == current_notify))
+                b.clicked.connect(lambda _, k=key: self._set_notify(k))
+                self._notify_btns[key] = b
+                notify_row.addWidget(b)
+            notify_row.addStretch()
+            sl.addLayout(notify_row)
+            sl.addWidget(hsep())
 
-        # ── Reset to Defaults ──
-        reset_row = QHBoxLayout()
-        reset_row.setContentsMargins(0, 4, 0, 0)
-        self._reset_btn = btn("Reset to Defaults", P["error"], "#fff")
-        self._reset_btn.setFixedHeight(36)
-        self._reset_btn.clicked.connect(self._reset_settings)
-        reset_row.addStretch()
-        reset_row.addWidget(self._reset_btn)
-        sl.addLayout(reset_row)
+        def build_about(sl):
+            # ── Storage Utilization (#5) ──
+            sl.addWidget(lbl("STORAGE UTILIZATION", 9, bold=True, color=P["muted"]))
+            self._storage_lbl = lbl("Calculating...", 9, color=P["text"])
+            sl.addWidget(self._storage_lbl)
 
-        # ── Version label ──
-        ver = lbl(f"Alter v{APP_VERSION}", 8, color=P["muted"])
-        ver.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        root.addWidget(ver)
+            self._calculate_storage_utilization()
+
+            # Refresh button
+            self._refresh_storage_btn = btn("Refresh Storage", P["card_hover"], P["text"])
+            self._refresh_storage_btn.setFixedWidth(120)
+            self._refresh_storage_btn.clicked.connect(self._calculate_storage_utilization)
+            sl.addWidget(self._refresh_storage_btn)
+
+            sl.addWidget(hsep())
+
+            # ── FFmpeg status ──
+            ffmpeg_ok = shutil.which("ffmpeg") is not None
+            status_msg = "FFmpeg ready. Merging and conversion are enabled." if ffmpeg_ok \
+                     else "FFmpeg missing. MP3/merge may not work. Install from ffmpeg.org"
+            sl.addWidget(lbl(status_msg, 9,
+                             color=P["success"] if ffmpeg_ok else P["error"]))
+
+            sl.addStretch()
+
+            # ── Reset to Defaults ──
+            reset_row = QHBoxLayout()
+            reset_row.setContentsMargins(0, 4, 0, 0)
+            self._reset_btn = btn("Reset to Defaults", P["error"], "#fff")
+            self._reset_btn.setFixedHeight(36)
+            self._reset_btn.clicked.connect(self._reset_settings)
+            reset_row.addStretch()
+            reset_row.addWidget(self._reset_btn)
+            sl.addLayout(reset_row)
+
+            # ── Version label ──
+            ver = lbl(f"Alter v{APP_VERSION}", 8, color=P["muted"])
+            ver.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            sl.addWidget(ver)
+
+        self.tabs.addTab(create_scrollable_tab(build_general), "General")
+        self.tabs.addTab(create_scrollable_tab(build_downloads), "Downloads")
+        self.tabs.addTab(create_scrollable_tab(build_notifications), "Notifications")
+        self.tabs.addTab(create_scrollable_tab(build_about), "About")
 
         self.refresh_styles()
+
+    def _calculate_storage_utilization(self):
+        try:
+            import os, shutil
+            save_path = self._s.get("save_path")
+            if not save_path or not os.path.exists(save_path):
+                self._storage_lbl.setText("Storage path not found.")
+                return
+
+            total_size = 0
+            for dirpath, dirnames, filenames in os.walk(save_path):
+                for f in filenames:
+                    fp = os.path.join(dirpath, f)
+                    if not os.path.islink(fp):
+                        total_size += os.path.getsize(fp)
+
+            total, used, free = shutil.disk_usage(save_path)
+
+            def format_size(size_bytes):
+                for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+                    if size_bytes < 1024.0:
+                        return f"{size_bytes:.2f} {unit}"
+                    size_bytes /= 1024.0
+
+            app_size_str = format_size(total_size)
+            total_size_str = format_size(total)
+            free_size_str = format_size(free)
+
+            percentage = (total_size / total) * 100 if total > 0 else 0
+
+            self._storage_lbl.setText(f"App Data Size: {app_size_str} ({percentage:.2f}%)\nTotal Disk Size: {total_size_str}\nFree Space: {free_size_str}")
+        except Exception as e:
+            self._storage_lbl.setText(f"Error calculating storage: {str(e)}")
 
     @staticmethod
     def _theme_pill(active: bool) -> str:
@@ -248,11 +314,14 @@ class SettingsPage(QWidget):
                 f"QPushButton:hover{{color:{P['text']};}}"
             )
         current_theme = self._s.get("theme")
-        for k, b in self._theme_btns.items():
+        for k, b in getattr(self, "_theme_btns", {}).items():
             b.setStyleSheet(self._theme_pill(k == current_theme))
         current_notify = self._s.get("notify") or "each"
-        for k, b in self._notify_btns.items():
+        for k, b in getattr(self, "_notify_btns", {}).items():
             b.setStyleSheet(self._theme_pill(k == current_notify))
+
+        if hasattr(self, "tabs"):
+            self.tabs.setStyleSheet(f"QTabWidget::pane {{ border: 0; }} QTabBar::tab {{ background: {P['card']}; padding: 8px 12px; margin: 2px; border-radius: 4px; }} QTabBar::tab:selected {{ background: {P['accent']}; color: white; }}")
 
     def _set_theme(self, key: str):
         self._s.set("theme", key)

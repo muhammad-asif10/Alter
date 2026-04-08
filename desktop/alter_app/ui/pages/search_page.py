@@ -231,7 +231,7 @@ class SearchPage(QWidget):
                 tpl  = self._s.get("filename_tpl") or "%(title)s.%(ext)s"
                 title = e.get("title", "Unknown")
                 opts = {
-                    "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/bestvideo+bestaudio/best",
+                    "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4][acodec!=opus]/bestvideo+bestaudio[acodec!=opus]/best",
                     "outtmpl": os.path.join(save, tpl),
                     "merge_output_format": "mp4",
                     "_title": title, "_fmt": "mp4", "_path": save,
@@ -414,7 +414,7 @@ class SearchPage(QWidget):
                 opts = {
                     "format": (
                         f"bestvideo[ext=mp4][height<={height}]+bestaudio[ext=m4a]"
-                        f"/best[ext=mp4][height<={height}]"
+                        f"/best[ext=mp4][height<={height}][acodec!=opus]"
                         f"/bestvideo[height<={height}]+bestaudio[acodec!=opus]"
                         f"/best[height<={height}]"
                     ),

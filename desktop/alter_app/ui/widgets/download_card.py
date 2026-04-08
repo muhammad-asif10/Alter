@@ -46,10 +46,10 @@ class DownloadCard(QFrame):
         top_row.setSpacing(6)
 
         badge_bg = self.FMT_COLOR.get(fmt.lower(), P["border"])
-        self._badge = lbl(f" {fmt.upper()} ", 7, bold=True, color="#fff")
+        self._badge = lbl(f" {fmt.upper()} ", 9, bold=True, color="#fff")
         self._badge.setStyleSheet(
             f"background:{badge_bg};color:white;"
-            f"border-radius:4px;padding:2px 5px;font-size:7pt;font-weight:700;"
+            f"border-radius:4px;padding:2px 5px;font-size:9pt;font-weight:700;"
         )
         self._badge.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
@@ -69,6 +69,12 @@ class DownloadCard(QFrame):
         self._btn_open.setStyleSheet(self._control_btn_style())
         self._btn_open.setVisible(False)
         self._btn_open.clicked.connect(lambda: self.sig_open.emit(self._save_path))
+
+        self._btn_rename = QPushButton("Rename")
+        self._btn_rename.setFixedSize(54, 28)
+        self._btn_rename.setStyleSheet(self._control_btn_style())
+        self._btn_rename.setVisible(False)
+        self._btn_rename.clicked.connect(self._rename_file)
 
         self._btn_retry = QPushButton("Retry")
         self._btn_retry.setFixedSize(48, 28)
@@ -93,6 +99,7 @@ class DownloadCard(QFrame):
         top_row.addWidget(self._btn_retry)
         top_row.addWidget(self._btn_x)
         top_row.addWidget(self._btn_open)
+        top_row.addWidget(self._btn_rename)
         root.addLayout(top_row)
 
         # ── Progress bar ──
@@ -134,7 +141,7 @@ class DownloadCard(QFrame):
         self._state_pill.setText(txt)
         self._state_pill.setStyleSheet(
             f"background:{color};color:#fff;border-radius:6px;"
-            f"padding:2px 7px;font-size:7pt;font-weight:700;"
+            f"padding:2px 7px;font-size:9pt;font-weight:700;"
         )
 
     def on_progress(self, pct, spd, eta):
@@ -167,6 +174,26 @@ class DownloadCard(QFrame):
         self._lbl_speed.setText("")
         self._btn_x.setVisible(False)
         self._btn_open.setVisible(True)
+        self._btn_rename.setVisible(True)
+
+    def _rename_file(self):
+        from PyQt6.QtWidgets import QInputDialog
+        import os
+
+        current_name = os.path.basename(self._save_path)
+        base, ext = os.path.splitext(current_name)
+
+        new_name, ok = QInputDialog.getText(self, "Rename File", "Enter new name:", text=base)
+        if ok and new_name and new_name != base:
+            new_filename = f"{new_name}{ext}"
+            new_path = os.path.join(os.path.dirname(self._save_path), new_filename)
+            try:
+                os.rename(self._save_path, new_path)
+                self._save_path = new_path
+                self._lbl_title.setText((new_name[:30] + "…") if len(new_name) > 30 else new_name)
+            except Exception as e:
+                from PyQt6.QtWidgets import QMessageBox
+                QMessageBox.warning(self, "Rename Failed", f"Could not rename file: {str(e)}")
 
     def on_error(self, msg):
         self.status = "error"
@@ -193,10 +220,11 @@ class DownloadCard(QFrame):
         badge_bg = self.FMT_COLOR.get(self._fmt, P["border"])
         self._badge.setStyleSheet(
             f"background:{badge_bg};color:white;"
-            f"border-radius:4px;padding:2px 5px;font-size:7pt;font-weight:700;"
+            f"border-radius:4px;padding:2px 5px;font-size:9pt;font-weight:700;"
         )
         self._btn_x.setStyleSheet(self._control_btn_style())
         self._btn_open.setStyleSheet(self._control_btn_style())
+        self._btn_rename.setStyleSheet(self._control_btn_style())
 
         if self.status == "queued":
             self._lbl_status.setStyleSheet(f"color:{P['muted']};")

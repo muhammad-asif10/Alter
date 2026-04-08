@@ -398,9 +398,7 @@ class MainWindow(QMainWindow):
         self._page_downloads.add(card)
 
         worker = DownloadWorker(dl_id, url, opts)
-        worker.progress.connect(lambda i, p, s, e:
-            self._page_downloads.get(i) and
-            self._page_downloads.get(i).on_progress(p, s, e))
+        worker.progress.connect(lambda i, p, s, e: self._handle_progress(i, p, s, e))
         worker.processing.connect(lambda i:
             self._page_downloads.get(i) and
             self._page_downloads.get(i).on_processing())
@@ -410,6 +408,32 @@ class MainWindow(QMainWindow):
 
         self._workers[dl_id] = worker
         self._refresh_download_summary()
+
+    def _handle_progress(self, dl_id, pct, spd, eta):
+        card = self._page_downloads.get(dl_id)
+        if card:
+            card.on_progress(pct, spd, eta)
+
+        # Emit a tray notification for significant progress milestones
+        if not hasattr(self, "_progress_notified"):
+            self._progress_notified = {}
+
+        pct_int = int(pct)
+        # Notify at 25%, 50%, 75%
+        for milestone in [25, 50, 75]:
+            if pct_int >= milestone and milestone not in self._progress_notified.get(dl_id, set()):
+                if dl_id not in self._progress_notified:
+                    self._progress_notified[dl_id] = set()
+                self._progress_notified[dl_id].add(milestone)
+
+                notify = self._settings.get("notify") or "each"
+                if notify != "never":
+                    title = card.opts.get("_title", "Download") if card else "Download"
+                    self._notify_message(
+                        f"Download Progress: {milestone}%",
+                        f"{title[:40]}... is {milestone}% complete\nSpeed: {spd} | ETA: {eta}",
+                        QSystemTrayIcon.MessageIcon.Information, 2000
+                    )
 
     def _drain_queue(self):
         if self._paused:
