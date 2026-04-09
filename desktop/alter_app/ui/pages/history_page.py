@@ -95,10 +95,10 @@ class HistoryPage(QWidget):
             top_r = QHBoxLayout()
             fmt = e.get("format", "mp4").split("-")[0]
             badge_bg = FMT_C.get(fmt.lower(), P["border"])
-            badge = lbl(f" {fmt.upper()} ", 7, bold=True, color="#fff")
+            badge = lbl(f" {fmt.upper()} ", 9, bold=True, color="#fff")
             badge.setStyleSheet(
                 f"background:{badge_bg};color:white;"
-                f"border-radius:4px;padding:1px 5px;font-weight:700;"
+                f"border-radius:4px;padding:1px 5px;font-size:9pt;font-weight:700;"
             )
             badge.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
@@ -166,7 +166,7 @@ class HistoryPage(QWidget):
             opts = {
                 "format": (
                     f"bestvideo[ext=mp4][height<={height}]+bestaudio[ext=m4a]"
-                    f"/best[ext=mp4][height<={height}]"
+                    f"/best[ext=mp4][height<={height}][acodec!=opus]"
                     f"/bestvideo[height<={height}]+bestaudio[acodec!=opus]"
                     f"/best[height<={height}]"
                 ),
